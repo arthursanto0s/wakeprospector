@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wake Prospector CRM — Inteligência Comercial</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --surface: #111827;
+      --surface-card: #162032;
+      --surface-hover: #1f2d44;
+      --border: #24344d;
+      --border-light: #334b6e;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --primary: #38bdf8;
+      --primary-hover: #0284c7;
+      --success: #10b981;
+      --success-hover: #059669;
+      --warning: #f59e0b;
+      --danger: #f43f5e;
+      --danger-hover: #e11d48;
+      --accent: #818cf8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    body { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+    
+    /* Topbar */
+    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 50; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.02em; color: var(--primary); }
+    .brand .badge-tag { font-size: 0.7rem; background: rgba(56, 189, 248, 0.15); color: var(--primary); border: 1px solid rgba(56, 189, 248, 0.3); padding: 2px 8px; border-radius: 999px; text-transform: uppercase; font-weight: 600; }
+    .live-status { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--success); }
+    .pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 8px var(--success); animation: pulse 2s infinite; }
+    @keyframes pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.1); } 100% { opacity: 1; transform: scale(1); } }
+
+    /* Stats bar */
+    .stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; padding: 18px 24px; max-width: 1400px; margin: 0 auto; width: 100%; }
+    .stat-card { background: var(--surface-card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; display: flex; flex-direction: column; gap: 4px; transition: transform 0.15s ease; }
+    .stat-card:hover { transform: translateY(-2px); border-color: var(--border-light); }
+    .stat-label { font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
+    .stat-value { font-size: 1.5rem; font-weight: 700; color: var(--text); }
+    .stat-card.a-revisar .stat-value { color: var(--primary); }
+    .stat-card.contatados .stat-value { color: var(--accent); }
+    .stat-card.respostas .stat-value { color: var(--success); }
+    .stat-card.descartados .stat-value { color: var(--danger); }
+
+    /* Controls & Filters */
+    .controls { max-width: 1400px; margin: 0 auto 16px auto; padding: 0 24px; width: 100%; display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center; }
+    .search-box { position: relative; flex: 1; min-width: 280px; }
+    .search-box input { width: 100%; background: var(--surface-card); border: 1px solid var(--border); color: var(--text); padding: 10px 14px 10px 36px; border-radius: 8px; font-size: 0.9rem; outline: none; transition: border-color 0.2s; }
+    .search-box input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2); }
+    .search-box svg { position: absolute; left: 12px; top: 12px; width: 16px; height: 16px; fill: var(--text-muted); }
+    .filter-group { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    select, button { background: var(--surface-card); border: 1px solid var(--border); color: var(--text); padding: 9px 14px; border-radius: 8px; font-size: 0.85rem; font-weight: 500; cursor: pointer; outline: none; transition: all 0.15s ease; }
+    select:hover, button:hover { background: var(--surface-hover); border-color: var(--border-light); }
+    .view-toggle { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .view-toggle button { border: none; border-radius: 0; padding: 8px 12px; }
+    .view-toggle button.active { background: var(--primary); color: #000; font-weight: 700; }
+
+    /* Tabs */
+    .tabs { max-width: 1400px; margin: 0 auto; padding: 0 24px 16px 24px; width: 100%; display: flex; gap: 6px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+    .tab-btn { background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--text-muted); padding: 8px 16px; border-radius: 0; font-size: 0.9rem; font-weight: 600; white-space: nowrap; }
+    .tab-btn:hover { color: var(--text); background: transparent; }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); background: transparent; }
+
+    /* Content Area */
+    main { max-width: 1400px; margin: 0 auto; padding: 24px; width: 100%; flex: 1; }
+
+    /* Kanban Board */
+    .kanban-board { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; align-items: flex-start; }
+    .kanban-col { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 14px; min-height: 500px; }
+    .col-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+    .col-title { font-size: 0.95rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .col-count { font-size: 0.75rem; background: var(--surface-hover); color: var(--text-muted); padding: 2px 8px; border-radius: 999px; font-weight: 700; }
+    .cards-list { display: flex; flex-direction: column; gap: 14px; min-height: 200px; }
+
+    /* Lead Card */
+    .card { background: var(--surface-card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px; transition: all 0.2s ease; position: relative; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2); }
+    .card:hover { border-color: var(--border-light); box-shadow: 0 6px 12px -2px rgba(0,0,0,0.3); }
+    .card.is-seen { opacity: 0.92; }
+    .card.unseen { border-left: 3px solid var(--primary); }
+    .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+    .card-title { font-size: 1rem; font-weight: 700; line-height: 1.3; color: var(--text); }
+    .card-sub { font-size: 0.8rem; color: var(--text-muted); margin-top: 2px; }
+    .badges { display: flex; gap: 6px; flex-wrap: wrap; }
+    .badge { font-size: 0.7rem; font-weight: 700; padding: 3px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.02em; }
+    .badge.strong { background: rgba(16, 185, 129, 0.18); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.35); }
+    .badge.possible { background: rgba(56, 189, 248, 0.18); color: #7dd3fc; border: 1px solid rgba(56, 189, 248, 0.35); }
+    .badge.seen { background: rgba(148, 163, 184, 0.15); color: #94a3b8; }
+    .badge.unseen-badge { background: rgba(56, 189, 248, 0.2); color: #38bdf8; font-weight: 800; }
+    .badge.discarded { background: rgba(244, 63, 94, 0.2); color: #fb7185; }
+    .badge.audit-ok { background: rgba(16, 185, 129, 0.14); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.35); }
+
+    .audit-details { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--success); border-radius: 8px; padding: 8px 10px; font-size: 0.78rem; color: var(--text-muted); }
+    .audit-details summary { cursor: pointer; font-weight: 700; color: #6ee7b7; outline: none; user-select: none; }
+    .audit-details .audit-content { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; line-height: 1.38; }
+    .audit-details .audit-content strong { color: var(--text); }
+    .audit-details a { color: var(--primary); text-decoration: none; word-break: break-all; }
+    .audit-details a:hover { text-decoration: underline; }
+
+    .lead-info { font-size: 0.82rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 4px; }
+    .lead-info strong { color: var(--text); }
+    .lead-info .info-item { display: flex; gap: 6px; align-items: flex-start; }
+
+    /* Outreach Message Box */
+    .msg-preview { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-size: 0.82rem; font-style: italic; color: #bae6fd; position: relative; }
+    .copy-btn { position: absolute; right: 6px; top: 6px; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; background: var(--surface-hover); color: var(--text-muted); cursor: pointer; border: none; }
+    .copy-btn:hover { color: var(--text); }
+
+    /* Action Buttons */
+    .card-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+    .btn-wa { grid-column: span 2; background: #22c55e; color: #042f2e; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 700; font-size: 0.85rem; padding: 10px; border-radius: 6px; border: none; transition: background 0.15s; }
+    .btn-wa:hover { background: #16a34a; }
+    .btn-action { font-size: 0.78rem; font-weight: 600; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer; }
+    .btn-sent { background: rgba(56, 189, 248, 0.12); color: var(--primary); border-color: rgba(56, 189, 248, 0.3); }
+    .btn-sent:hover { background: rgba(56, 189, 248, 0.25); }
+    .btn-discard { background: rgba(244, 63, 94, 0.1); color: #fb7185; border-color: rgba(244, 63, 94, 0.3); }
+    .btn-discard:hover { background: rgba(244, 63, 94, 0.25); }
+    .btn-reply { background: rgba(129, 140, 248, 0.12); color: var(--accent); border-color: rgba(129, 140, 248, 0.3); grid-column: span 2; }
+    .btn-reply:hover { background: rgba(129, 140, 248, 0.25); }
+    .btn-toggle-seen { background: transparent; border: none; color: var(--text-muted); font-size: 0.75rem; text-decoration: underline; cursor: pointer; text-align: right; padding: 0; }
+    .btn-toggle-seen:hover { color: var(--text); }
+
+    /* Table View */
+    .table-container { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left; }
+    th { background: var(--surface-card); color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.72rem; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+    td { padding: 12px 16px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: top; }
+    tr:hover td { background: var(--surface-hover); }
+    tr.is-seen td { opacity: 0.9; }
+
+    /* Modals */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); display: none; align-items: center; justify-content: center; z-index: 100; padding: 16px; backdrop-filter: blur(4px); }
+    .modal-overlay.active { display: flex; }
+    .modal { background: var(--surface-card); border: 1px solid var(--border-light); border-radius: 12px; max-width: 500px; width: 100%; padding: 24px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); }
+    .modal-title { font-size: 1.15rem; font-weight: 700; color: var(--text); }
+    .modal-body { display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem; }
+    .modal-body label { font-weight: 600; color: var(--text-muted); }
+    .modal-body textarea, .modal-body select, .modal-body input { background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 10px; font-size: 0.85rem; width: 100%; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+    .btn-cancel { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
+    .btn-confirm { background: var(--primary); color: #000; font-weight: 700; border: none; }
+    .btn-danger { background: var(--danger); color: #fff; font-weight: 700; border: none; }
+
+    /* Empty state */
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); font-size: 0.95rem; }
+
+    /* Toast notification */
+    .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface-card); border: 1px solid var(--border-light); color: var(--text); padding: 12px 20px; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5); display: none; font-size: 0.85rem; font-weight: 600; z-index: 200; align-items: center; gap: 8px; border-left: 4px solid var(--success); }
+    .toast.show { display: flex; animation: slideIn 0.2s ease-out; }
+    @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  </style>
+</head>
+<body>
+
+  <!-- Topbar -->
+  <header>
+    <div class="brand">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      <h1>Wake Prospector CRM</h1>
+      <span class="badge-tag">Barra da Tijuca — V1</span>
+    </div>
+    <div class="live-status">
+      <div class="pulse-dot"></div>
+      <span>Localhost Ativo (Tempo Real)</span>
+    </div>
+  </header>
+
+  <!-- Metric Stats -->
+  <section class="stats-container">
+    <div class="stat-card">
+      <span class="stat-label">Total de Leads</span>
+      <span class="stat-value" id="stat-total">0</span>
+    </div>
+    <div class="stat-card a-revisar">
+      <span class="stat-label">A Revisar / Pendentes</span>
+      <span class="stat-value" id="stat-review">0</span>
+    </div>
+    <div class="stat-card contatados">
+      <span class="stat-label">Mensagens Enviadas</span>
+      <span class="stat-value" id="stat-contacted">0</span>
+    </div>
+    <div class="stat-card respostas">
+      <span class="stat-label">Responderam</span>
+      <span class="stat-value" id="stat-responded">0</span>
+    </div>
+    <div class="stat-card descartados">
+      <span class="stat-label">Descartados (Com Site / Fora)</span>
+      <span class="stat-value" id="stat-discarded">0</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Visualizados (Vistos)</span>
+      <span class="stat-value" id="stat-seen">0</span>
+    </div>
+  </section>
+
+  <!-- Filter & Controls -->
+  <div class="controls">
+    <div class="search-box">
+      <svg viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      <input type="text" id="search-input" placeholder="Buscar por clínica/empresa, responsável, telefone, endereço ou auditoria...">
+    </div>
+
+    <div class="filter-group">
+      <select id="filter-priority">
+        <option value="">Todas as Prioridades</option>
+        <option value="STRONG">🔥 Alta Prioridade (Móvel / WhatsApp)</option>
+        <option value="POSSIBLE">🏢 Média Prioridade (Fixo Comercial)</option>
+      </select>
+
+      <select id="filter-seen">
+        <option value="">Todos os Leads</option>
+        <option value="unseen">⚪ Não Vistos</option>
+        <option value="seen">👁️ Já Vistos</option>
+      </select>
+
+      <div class="view-toggle">
+        <button id="btn-view-kanban" class="active" onclick="switchView('kanban')">Kanban</button>
+        <button id="btn-view-table" onclick="switchView('table')">Tabela</button>
+      </div>
+
+      <button onclick="fetchLeadsAndRender()" title="Atualizar dados">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="setTab('ALL', this)">Todos (<span id="tab-all-count">0</span>)</button>
+    <button class="tab-btn" onclick="setTab('READY_FOR_REVIEW', this)">A Revisar (<span id="tab-review-count">0</span>)</button>
+    <button class="tab-btn" onclick="setTab('CONTACTED', this)">Contatados (<span id="tab-contacted-count">0</span>)</button>
+    <button class="tab-btn" onclick="setTab('RESPONDED', this)">Responderam (<span id="tab-responded-count">0</span>)</button>
+    <button class="tab-btn" onclick="setTab('DISCARDED', this)">Descartados (<span id="tab-discarded-count">0</span>)</button>
+  </div>
+
+  <!-- Main View -->
+  <main>
+    <!-- Kanban View -->
+    <div id="view-kanban" class="kanban-board">
+      <div class="kanban-col" id="col-review">
+        <div class="col-header">
+          <span class="col-title" style="color: var(--primary);">📥 A Revisar (Novos)</span>
+          <span class="col-count" id="count-col-review">0</span>
+        </div>
+        <div class="cards-list" id="list-review"></div>
+      </div>
+
+      <div class="kanban-col" id="col-contacted">
+        <div class="col-header">
+          <span class="col-title" style="color: var(--accent);">💬 Mensagem Enviada (Aguardando)</span>
+          <span class="col-count" id="count-col-contacted">0</span>
+        </div>
+        <div class="cards-list" id="list-contacted"></div>
+      </div>
+
+      <div class="kanban-col" id="col-responded">
+        <div class="col-header">
+          <span class="col-title" style="color: var(--success);">🎯 Responderam / Negociação</span>
+          <span class="col-count" id="count-col-responded">0</span>
+        </div>
+        <div class="cards-list" id="list-responded"></div>
+      </div>
+
+      <div class="kanban-col" id="col-discarded">
+        <div class="col-header">
+          <span class="col-title" style="color: var(--danger);">🚫 Descartados / Fora do Foco</span>
+          <span class="col-count" id="count-col-discarded">0</span>
+        </div>
+        <div class="cards-list" id="list-discarded"></div>
+      </div>
+    </div>
+
+    <!-- Table View -->
+    <div id="view-table" class="table-container" style="display: none;">
+      <table>
+        <thead>
+          <tr>
+            <th>Status / Visto</th>
+            <th>Empresa / Escritório</th>
+            <th>Responsável</th>
+            <th>Contato / Endereço</th>
+            <th>Prioridade</th>
+            <th>Ações Rápidas</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- Modal Descarte -->
+  <div class="modal-overlay" id="modal-discard">
+    <div class="modal">
+      <h3 class="modal-title">Descartar Lead do Foco V1</h3>
+      <div class="modal-body">
+        <p>Informe o motivo do descarte (obrigatório para manter a auditoria):</p>
+        <label for="discard-preset">Motivo Predefinido:</label>
+        <select id="discard-preset" onchange="onDiscardPresetChange()">
+          <option value="Já possui website próprio oficial">Possui website próprio oficial</option>
+          <option value="Telefone inexistente / Não atende">Telefone inexistente ou inválido</option>
+          <option value="Não atua mais na Barra da Tijuca">Não está sediado na Barra da Tijuca</option>
+          <option value="Recusou contato comercial categoricamente">Recusou abordagem categoricamente</option>
+          <option value="custom">Outro motivo...</option>
+        </select>
+        <label for="discard-reason">Justificativa:</label>
+        <textarea id="discard-reason" rows="3" placeholder="Detalhes do descarte..."></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModals()">Cancelar</button>
+        <button class="btn-danger" onclick="submitDiscard()">Confirmar Descarte</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Resposta -->
+  <div class="modal-overlay" id="modal-reply">
+    <div class="modal">
+      <h3 class="modal-title">Registrar Resposta do Cliente</h3>
+      <div class="modal-body">
+        <label for="reply-text">Mensagem Recebida (WhatsApp):</label>
+        <textarea id="reply-text" rows="3" placeholder="Cole aqui o que o advogado/escritório respondeu..."></textarea>
+        
+        <label for="reply-intent">Classificação da Intenção:</label>
+        <select id="reply-intent">
+          <option value="">Classificar Automaticamente</option>
+          <option value="INTERESTED">Demonstrou Interesse</option>
+          <option value="MEETING_REQUEST">Solicitou Reunião / Contato Telefônico</option>
+          <option value="ASKING_CONTEXT">Pediu mais explicações / portfólio</option>
+          <option value="NOT_INTERESTED">Não tem interesse no momento</option>
+          <option value="NOT_RESPONSIBLE">Não é o responsável</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModals()">Cancelar</button>
+        <button class="btn-confirm" onclick="submitReply()">Salvar Retorno</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast">
+    <span id="toast-msg">Ação executada com sucesso!</span>
+  </div>
+
+  <script>
+    let allLeads = [];
+    let currentTab = 'ALL';
+    let currentView = 'kanban';
+    let activeLeadId = null;
+
+    // Script automático de verificação de turno (Bom dia / Boa tarde / Boa noite) em tempo real
+    function getTimeGreeting() {
+      const h = new Date().getHours();
+      if (h >= 5 && h < 12) return 'Bom dia';
+      if (h >= 12 && h < 18) return 'Boa tarde';
+      return 'Boa noite';
+    }
+
+    function applyLiveGreeting(msg) {
+      if (!msg) return '';
+      const g = getTimeGreeting();
+      return msg.replace(/^(Bom dia|Boa tarde|Boa noite|Olá)/i, g);
+    }
+
+    // Fetch initial leads and stats
+    async function fetchLeadsAndRender() {
+      try {
+        const [resLeads, resStats] = await Promise.all([
+          fetch('/api/leads'),
+          fetch('/api/stats')
+        ]);
+        const dataLeads = await resLeads.json();
+        const dataStats = await resStats.json();
+
+        if (dataLeads.success) {
+          allLeads = dataLeads.leads;
+        }
+        if (dataStats.success) {
+          updateStatsUI(dataStats.stats);
+        }
+        renderCurrentView();
+      } catch (err) {
+        showToast('Erro ao carregar dados do servidor local: ' + err, true);
+      }
+    }
+
+    function updateStatsUI(stats) {
+      document.getElementById('stat-total').innerText = stats.total;
+      document.getElementById('stat-review').innerText = stats.ready_for_review;
+      document.getElementById('stat-contacted').innerText = stats.contacted + stats.waiting_reply;
+      document.getElementById('stat-responded').innerText = stats.responded + stats.interested_handoff;
+      document.getElementById('stat-discarded').innerText = stats.discarded;
+      document.getElementById('stat-seen').innerText = stats.seen;
+
+      // Tab counters
+      document.getElementById('tab-all-count').innerText = stats.total;
+      document.getElementById('tab-review-count').innerText = stats.ready_for_review;
+      document.getElementById('tab-contacted-count').innerText = stats.contacted + stats.waiting_reply;
+      document.getElementById('tab-responded-count').innerText = stats.responded + stats.interested_handoff;
+      document.getElementById('tab-discarded-count').innerText = stats.discarded;
+    }
+
+    function filterLeads() {
+      const q = document.getElementById('search-input').value.toLowerCase().trim();
+      const priority = document.getElementById('filter-priority').value;
+      const seen = document.getElementById('filter-seen').value;
+
+      return allLeads.filter(lead => {
+        // Tab filter
+        const st = lead.pipeline_status;
+        if (currentTab === 'READY_FOR_REVIEW' && st !== 'READY_FOR_REVIEW') return false;
+        if (currentTab === 'CONTACTED' && st !== 'CONTACTED' && st !== 'WAITING_REPLY') return false;
+        if (currentTab === 'RESPONDED' && st !== 'RESPONDED' && st !== 'INTERESTED_HANDOFF') return false;
+        if (currentTab === 'DISCARDED' && st !== 'DISCARDED') return false;
+
+        // Search text
+        if (q) {
+          const matchName = (lead.business.name || '').toLowerCase().includes(q);
+          const matchContact = (lead.enriched.contact_name || '').toLowerCase().includes(q);
+          const matchPhone = (lead.enriched.normalized_phone || '').includes(q) || (lead.contacts[0]?.phone || '').includes(q);
+          const matchAddr = (lead.business.address || '').toLowerCase().includes(q);
+          if (!matchName && !matchContact && !matchPhone && !matchAddr) return false;
+        }
+
+        // Priority filter
+        if (priority && lead.opportunity.classification !== priority) return false;
+
+        // Seen filter
+        if (seen === 'seen' && !lead.enriched.is_seen) return false;
+        if (seen === 'unseen' && lead.enriched.is_seen) return false;
+
+        return true;
+      });
+    }
+
+    function renderCurrentView() {
+      const filtered = filterLeads();
+      if (currentView === 'kanban') {
+        renderKanban(filtered);
+      } else {
+        renderTable(filtered);
+      }
+    }
+
+    function renderKanban(leads) {
+      const colReview = document.getElementById('list-review');
+      const colContacted = document.getElementById('list-contacted');
+      const colResponded = document.getElementById('list-responded');
+      const colDiscarded = document.getElementById('list-discarded');
+
+      colReview.innerHTML = '';
+      colContacted.innerHTML = '';
+      colResponded.innerHTML = '';
+      colDiscarded.innerHTML = '';
+
+      let cReview = 0, cContacted = 0, cResponded = 0, cDiscarded = 0;
+
+      leads.forEach(lead => {
+        const card = createCardElement(lead);
+        const st = lead.pipeline_status;
+
+        if (st === 'READY_FOR_REVIEW' || st === 'QUALIFIED' || st === 'NEW') {
+          colReview.appendChild(card);
+          cReview++;
+        } else if (st === 'CONTACTED' || st === 'WAITING_REPLY') {
+          colContacted.appendChild(card);
+          cContacted++;
+        } else if (st === 'RESPONDED' || st === 'INTERESTED_HANDOFF') {
+          colResponded.appendChild(card);
+          cResponded++;
+        } else if (st === 'DISCARDED') {
+          colDiscarded.appendChild(card);
+          cDiscarded++;
+        }
+      });
+
+      document.getElementById('count-col-review').innerText = cReview;
+      document.getElementById('count-col-contacted').innerText = cContacted;
+      document.getElementById('count-col-responded').innerText = cResponded;
+      document.getElementById('count-col-discarded').innerText = cDiscarded;
+    }
+
+    function createCardElement(lead) {
+      const card = document.createElement('div');
+      const isSeen = lead.enriched.is_seen;
+      card.className = `card ${isSeen ? 'is-seen' : 'unseen'}`;
+      card.id = `card-${lead.id}`;
+
+      const oppClass = lead.opportunity.classification || 'POSSIBLE';
+      const badgeOpp = oppClass === 'STRONG' ? '<span class="badge strong">🔥 Forte (Celular)</span>' : '<span class="badge possible">🏢 Possível (Fixo)</span>';
+      const badgeSeen = isSeen ? '<span class="badge seen">👁️ Visto</span>' : '<span class="badge unseen-badge">⚪ Não Visto</span>';
+      const auditObj = lead.enriched.audit || {};
+      const hasAudit = Boolean(auditObj.phone_provenance);
+      const badgeAudit = hasAudit ? '<span class="badge audit-ok">🛡️ Auditado 1:1</span>' : '';
+
+      const phoneDisplay = lead.enriched.display_phone || lead.contacts[0]?.phone || 'Sem telefone';
+      const contactName = lead.enriched.contact_name || 'Titular / Responsável';
+      const contactRole = lead.enriched.contact_role || 'Responsável';
+      const openingMsg = applyLiveGreeting(lead.outreach.opening_message || '');
+      const phoneNorm = lead.enriched.normalized_phone || '';
+      const waLink = phoneNorm ? `https://wa.me/${phoneNorm}?text=${encodeURIComponent(openingMsg)}` : (lead.enriched.wa_link || '');
+      const clinicPhoneDisplay = lead.enriched.clinic_display_phone || lead.contacts[1]?.phone || '';
+      const clinicRole = lead.enriched.clinic_role || 'Atendimento / Recepção da Clínica (Fallback)';
+      const clinicMsg = applyLiveGreeting(lead.enriched.clinic_message || '');
+      const clinicPhoneNorm = lead.enriched.clinic_normalized_phone || '';
+      const clinicWaLink = clinicPhoneNorm ? `https://wa.me/${clinicPhoneNorm}?text=${encodeURIComponent(clinicMsg)}` : (lead.enriched.clinic_wa_link || '');
+      const st = lead.pipeline_status;
+
+      const sourcesLinks = (lead.sources || []).map(s => `<a href="${s.url}" target="_blank">${s.title || s.url}</a>`).join(' • ');
+      const auditHtml = hasAudit ? `
+        <details class="audit-details">
+          <summary>🛡️ Auditoria Contraditória &amp; Vínculo 1:1 dos Números</summary>
+          <div class="audit-content">
+            <div><strong>Por que são estes números:</strong> ${auditObj.phone_provenance}</div>
+            ${auditObj.decision_maker_analysis ? `<div><strong>Análise do Decisor:</strong> ${auditObj.decision_maker_analysis}</div>` : ''}
+            <div><strong>⚔️ Contestação (Advogado do Diabo):</strong> ${auditObj.adversarial_challenge}</div>
+            <div><strong>✅ Veredito Comprobatório:</strong> ${auditObj.adversarial_verdict}</div>
+            ${sourcesLinks ? `<div><strong>🔗 Fontes:</strong> ${sourcesLinks}</div>` : ''}
+          </div>
+        </details>
+      ` : '';
+
+      let actionButtons = '';
+      if (st === 'READY_FOR_REVIEW') {
+        actionButtons = `
+          ${waLink ? `<a href="${waLink}" target="_blank" class="btn-wa" onclick="markSeen('${lead.id}', true)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.312.045-.634.074-1.854-.431-1.346-.557-2.214-1.92-2.28-2.008-.066-.088-.545-.726-.545-1.385s.346-.983.47-.1.118.17.256.17.38-.007.545-.007c.17 0 .397-.066.621.47.23.557.785 1.916.853 2.054.069.138.115.3.023.484-.092.185-.138.3-.276.462-.138.162-.291.36-.415.485-.138.138-.283.29-.122.568.161.277.717 1.182 1.542 1.916 1.062.946 1.957 1.24 2.234 1.378.277.138.438.115.6-.069.162-.185.692-.808.877-1.085.185-.277.369-.23.623-.138.254.092 1.614.761 1.891.899.277.138.462.207.53.323.069.115.069.669-.075 1.074z"/></svg>
+            📲 1º WhatsApp Pessoal do Doutor(a)
+          </a>` : ''}
+          ${clinicWaLink ? `<a href="${clinicWaLink}" target="_blank" class="btn-wa" style="background: rgba(56,189,248,0.18); color: #38bdf8; border: 1px solid rgba(56,189,248,0.4);" onclick="markSeen('${lead.id}', true)">
+            🏥 2º WhatsApp da Clínica (Fallback / Recepção)
+          </a>` : ''}
+          <button class="btn-action btn-sent" onclick="confirmSent('${lead.id}')">✓ Marcar como Enviado</button>
+          <button class="btn-action btn-discard" onclick="openDiscardModal('${lead.id}')">✕ Descartar</button>
+        `;
+      } else if (st === 'CONTACTED' || st === 'WAITING_REPLY') {
+        actionButtons = `
+          ${waLink ? `<a href="${waLink}" target="_blank" class="btn-wa" style="background:#0284c7;color:#fff;">📲 WhatsApp Doutor(a)</a>` : ''}
+          ${clinicWaLink ? `<a href="${clinicWaLink}" target="_blank" class="btn-wa" style="background:rgba(56,189,248,0.18);color:#38bdf8;border:1px solid rgba(56,189,248,0.4);">🏥 WhatsApp Clínica (Fallback)</a>` : ''}
+          <button class="btn-action btn-reply" onclick="openReplyModal('${lead.id}')">💬 Registrar Resposta do Cliente</button>
+          <button class="btn-action btn-discard" style="grid-column: span 2;" onclick="openDiscardModal('${lead.id}')">✕ Descartar Lead</button>
+        `;
+      } else if (st === 'RESPONDED' || st === 'INTERESTED_HANDOFF') {
+        actionButtons = `
+          <button class="btn-action btn-reply" style="grid-column: span 2; background: rgba(16,185,129,0.2); color: #34d399;" onclick="openReplyModal('${lead.id}')">📝 Atualizar Retorno / Negociação</button>
+        `;
+      } else if (st === 'DISCARDED') {
+        actionButtons = `
+          <div style="grid-column: span 2; font-size: 0.75rem; color: #fb7185; padding: 4px; background: rgba(244,63,94,0.1); border-radius: 4px;">
+            <strong>Motivo:</strong> ${lead.discard_reason || 'Descartado do escopo V1'}
+          </div>
+        `;
+      }
+
+      card.innerHTML = `
+        <div class="card-top">
+          <div class="badges">
+            ${badgeOpp}
+            ${badgeAudit}
+            ${badgeSeen}
+          </div>
+          <button class="btn-toggle-seen" onclick="toggleSeen('${lead.id}', ${!isSeen})">
+            ${isSeen ? 'Marcar Não Visto' : 'Marcar Visto'}
+          </button>
+        </div>
+
+        <div>
+          <div class="card-title">${lead.business.name}</div>
+          <div class="card-sub">${lead.business.category || 'Empresa'} • ${lead.business.neighborhood || 'Barra da Tijuca'}</div>
+        </div>
+
+        <div class="lead-info">
+          <div class="info-item">
+            <span>👤</span>
+            <div><strong>${contactName}</strong> <span style="font-size:0.75rem;opacity:0.8;">(${contactRole})</span></div>
+          </div>
+          <div class="info-item">
+            <span>📍</span>
+            <div>${lead.business.address || 'Barra da Tijuca, RJ'}</div>
+          </div>
+          <div class="info-item">
+            <span>📱</span>
+            <div><strong>${phoneDisplay}</strong> <span style="font-size:0.72rem;color:#34d399;font-weight:600;">(1º PESSOAL / DIRETO DO DOUTOR)</span></div>
+          </div>
+          ${clinicPhoneDisplay ? `
+          <div class="info-item">
+            <span>🏥</span>
+            <div><strong>${clinicPhoneDisplay}</strong> <span style="font-size:0.72rem;color:#38bdf8;font-weight:600;">(2º CLÍNICA / RECEPÇÃO - FALLBACK)</span></div>
+          </div>
+          ` : ''}
+        </div>
+
+        ${auditHtml}
+
+        ${openingMsg ? `
+          <div class="msg-preview">
+            <button class="copy-btn" onclick="copyText('${escapeQuotes(openingMsg)}')">Copiar Msg Doutor</button>
+            <div style="font-size:0.68rem;color:#34d399;font-weight:700;margin-bottom:2px;">📲 MENSAGEM DIRETA PESSOAL (DOUTOR/SÓCIO):</div>
+            "${openingMsg}"
+          </div>
+        ` : ''}
+
+        ${clinicMsg && clinicPhoneDisplay ? `
+          <div class="msg-preview" style="border-left-color: #38bdf8; margin-top: -4px;">
+            <button class="copy-btn" onclick="copyText('${escapeQuotes(clinicMsg)}')">Copiar Msg Clínica</button>
+            <div style="font-size:0.68rem;color:#38bdf8;font-weight:700;margin-bottom:2px;">🏥 MENSAGEM CLÍNICA (SE O DOUTOR NÃO RESPONDER):</div>
+            "${clinicMsg}"
+          </div>
+        ` : ''}
+
+        <div class="card-actions">
+          ${actionButtons}
+        </div>
+      `;
+
+      return card;
+    }
+
+    function renderTable(leads) {
+      const tbody = document.getElementById('table-body');
+      tbody.innerHTML = '';
+
+      if (leads.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="empty-state">Nenhum lead encontrado com os filtros selecionados.</td></tr>`;
+        return;
+      }
+
+      leads.forEach(lead => {
+        const isSeen = lead.enriched.is_seen;
+        const tr = document.createElement('tr');
+        tr.className = isSeen ? 'is-seen' : '';
+
+        const st = lead.pipeline_status;
+        const badgeSeen = isSeen ? '<span class="badge seen">👁️ Visto</span>' : '<span class="badge unseen-badge">⚪ Novo</span>';
+        const badgeOpp = lead.opportunity.classification === 'STRONG' ? '<span class="badge strong">STRONG</span>' : '<span class="badge possible">POSSIBLE</span>';
+        const openingMsg = applyLiveGreeting(lead.outreach.opening_message || '');
+        const phoneNorm = lead.enriched.normalized_phone || '';
+        const waLink = phoneNorm ? `https://wa.me/${phoneNorm}?text=${encodeURIComponent(openingMsg)}` : (lead.enriched.wa_link || '');
+        const clinicMsg = applyLiveGreeting(lead.enriched.clinic_message || '');
+        const clinicPhoneNorm = lead.enriched.clinic_normalized_phone || '';
+        const clinicWaLink = clinicPhoneNorm ? `https://wa.me/${clinicPhoneNorm}?text=${encodeURIComponent(clinicMsg)}` : (lead.enriched.clinic_wa_link || '');
+        const clinicPhoneDisplay = lead.enriched.clinic_display_phone || '';
+
+        tr.innerHTML = `
+          <td>
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <span style="font-weight:700;font-size:0.8rem;">${st}</span>
+              ${badgeSeen}
+            </div>
+          </td>
+          <td>
+            <strong>${lead.business.name}</strong><br>
+            <span style="font-size:0.75rem;color:var(--text-muted);">${lead.business.category || 'Empresa'}</span>
+          </td>
+          <td>
+            <strong>${lead.enriched.contact_name || 'N/I'}</strong><br>
+            <span style="font-size:0.75rem;color:var(--text-muted);">${lead.enriched.contact_role || ''}</span>
+          </td>
+          <td>
+            <div>📱 <strong style="color:#34d399;">${lead.enriched.display_phone || lead.contacts[0]?.phone || 'N/I'}</strong> <span style="font-size:0.7rem;">(Doutor)</span></div>
+            ${clinicPhoneDisplay ? `<div>🏥 <strong style="color:#38bdf8;">${clinicPhoneDisplay}</strong> <span style="font-size:0.7rem;">(Clínica)</span></div>` : ''}
+            <span style="font-size:0.75rem;color:var(--text-muted);">${lead.business.address || 'Barra da Tijuca'}</span>
+          </td>
+          <td>${badgeOpp}</td>
+          <td>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              ${waLink ? `<a href="${waLink}" target="_blank" class="btn-action" style="background:#22c55e;color:#000;font-weight:700;" onclick="markSeen('${lead.id}', true)">📲 Doutor</a>` : ''}
+              ${clinicWaLink ? `<a href="${clinicWaLink}" target="_blank" class="btn-action" style="background:#0284c7;color:#fff;font-weight:700;" onclick="markSeen('${lead.id}', true)">🏥 Clínica</a>` : ''}
+              ${st === 'READY_FOR_REVIEW' ? `<button class="btn-action btn-sent" onclick="confirmSent('${lead.id}')">✓ Enviado</button>` : ''}
+              ${(st === 'CONTACTED' || st === 'WAITING_REPLY') ? `<button class="btn-action btn-reply" onclick="openReplyModal('${lead.id}')">💬 Resposta</button>` : ''}
+              ${st !== 'DISCARDED' ? `<button class="btn-action btn-discard" onclick="openDiscardModal('${lead.id}')">✕</button>` : ''}
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Interactive Actions with Instant Localhost Persistence
+    async function confirmSent(leadId) {
+      try {
+        const res = await fetch(`/api/leads/${leadId}/confirm-sent`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notes: 'Confirmado pelo operador no CRM Web' })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`Envio confirmado para o lead! Movido para Contatados.`);
+          await fetchLeadsAndRender();
+        } else {
+          showToast('Erro: ' + data.error, true);
+        }
+      } catch (err) {
+        showToast('Falha na comunicação: ' + err, true);
+      }
+    }
+
+    function openDiscardModal(leadId) {
+      activeLeadId = leadId;
+      document.getElementById('discard-preset').value = 'Já possui website próprio oficial';
+      document.getElementById('discard-reason').value = 'Já possui website próprio oficial';
+      document.getElementById('modal-discard').classList.add('active');
+    }
+
+    function onDiscardPresetChange() {
+      const preset = document.getElementById('discard-preset').value;
+      if (preset !== 'custom') {
+        document.getElementById('discard-reason').value = preset;
+      } else {
+        document.getElementById('discard-reason').value = '';
+        document.getElementById('discard-reason').focus();
+      }
+    }
+
+    async function submitDiscard() {
+      const reason = document.getElementById('discard-reason').value.trim();
+      if (!reason) {
+        alert('Por favor, informe o motivo do descarte.');
+        return;
+      }
+      try {
+        const res = await fetch(`/api/leads/${activeLeadId}/discard`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('Lead descartado com sucesso.');
+          closeModals();
+          await fetchLeadsAndRender();
+        } else {
+          showToast('Erro: ' + data.error, true);
+        }
+      } catch (err) {
+        showToast('Falha na requisição: ' + err, true);
+      }
+    }
+
+    function openReplyModal(leadId) {
+      activeLeadId = leadId;
+      document.getElementById('reply-text').value = '';
+      document.getElementById('reply-intent').value = '';
+      document.getElementById('modal-reply').classList.add('active');
+    }
+
+    async function submitReply() {
+      const text = document.getElementById('reply-text').value.trim();
+      const intent = document.getElementById('reply-intent').value;
+      if (!text) {
+        alert('Por favor, digite o conteúdo da resposta do cliente.');
+        return;
+      }
+      try {
+        const res = await fetch(`/api/leads/${activeLeadId}/record-response`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, intent })
+        });
+        const data = await res.json();
+        if (data.success) {
+          if (data.handoff_dossier) {
+            alert('🚨 ATENÇÃO: LEAD INTERESSADO / HANDOFF EXECUTIVO ACIONADO!\n\n' + data.handoff_dossier);
+          }
+          showToast(`Resposta registrada! Intenção: ${data.intent}`);
+          closeModals();
+          await fetchLeadsAndRender();
+        } else {
+          showToast('Erro: ' + data.error, true);
+        }
+      } catch (err) {
+        showToast('Falha na requisição: ' + err, true);
+      }
+    }
+
+    async function toggleSeen(leadId, newState) {
+      try {
+        await fetch(`/api/leads/${leadId}/mark-seen`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_seen: newState })
+        });
+        await fetchLeadsAndRender();
+      } catch (err) {
+        console.error('Erro ao atualizar visto:', err);
+      }
+    }
+
+    async function markSeen(leadId, isSeen) {
+      try {
+        await fetch(`/api/leads/${leadId}/mark-seen`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_seen: isSeen })
+        });
+        await fetchLeadsAndRender();
+      } catch (err) {}
+    }
+
+    function closeModals() {
+      document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
+      activeLeadId = null;
+    }
+
+    function setTab(tab, btn) {
+      currentTab = tab;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderCurrentView();
+    }
+
+    function switchView(view) {
+      currentView = view;
+      document.getElementById('btn-view-kanban').classList.toggle('active', view === 'kanban');
+      document.getElementById('btn-view-table').classList.toggle('active', view === 'table');
+      document.getElementById('view-kanban').style.display = view === 'kanban' ? 'grid' : 'none';
+      document.getElementById('view-table').style.display = view === 'table' ? 'block' : 'none';
+      renderCurrentView();
+    }
+
+    function showToast(msg, isError = false) {
+      const t = document.getElementById('toast');
+      const m = document.getElementById('toast-msg');
+      m.innerText = msg;
+      t.style.borderLeftColor = isError ? 'var(--danger)' : 'var(--success)';
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3500);
+    }
+
+    function copyText(text) {
+      navigator.clipboard.writeText(text);
+      showToast('Mensagem copiada para a área de transferência!');
+    }
+
+    function escapeQuotes(str) {
+      return (str || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
+
+    // Search and filter listeners
+    document.getElementById('search-input').addEventListener('input', renderCurrentView);
+    document.getElementById('filter-priority').addEventListener('change', renderCurrentView);
+    document.getElementById('filter-seen').addEventListener('change', renderCurrentView);
+
+    // Initial load
+    fetchLeadsAndRender();
+
+    // Auto-refresh every 10 seconds for real-time sync with background tasks
+    setInterval(fetchLeadsAndRender, 10000);
+  </script>
+</body>
+</html>
